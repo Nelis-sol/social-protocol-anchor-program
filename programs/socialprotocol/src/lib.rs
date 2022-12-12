@@ -1164,6 +1164,18 @@ pub struct CreateGroupProfile<'info> {
     // create new user profile account, using the user id as seed
     #[account(init, payer = user, space = 8 + mem::size_of::<GroupProfile>(), seeds = [b"group_profile".as_ref(), user.key().as_ref()], bump)]
     pub group_profile: Account<'info, GroupProfile>,
+    #[account(mut)]
+    pub b: Account<'info, B>,
+    #[account(mut)]
+    /// CHECK: receiving account, not dangerous
+    pub receiver: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account()]
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
@@ -1178,6 +1190,18 @@ pub struct DeleteGroupProfile<'info> {
     // TODO: check if user = group
     #[account(mut, seeds = [b"group_profile".as_ref(), user.key().as_ref()], bump = group_profile.bump, close = spling)]
     pub group_profile: Account<'info, GroupProfile>,
+    #[account(mut)]
+    pub b: Account<'info, B>,
+    #[account(mut)]
+    /// CHECK: receiving account, not dangerous
+    pub receiver: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account()]
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
@@ -1200,6 +1224,18 @@ pub struct JoinGroup<'info> {
         realloc::zero = false,
     )]
     pub user_profile: Account<'info, UserProfile>,
+    #[account(mut)]
+    pub b: Account<'info, B>,
+    #[account(mut)]
+    /// CHECK: receiving account, not dangerous
+    pub receiver: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account()]
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
@@ -1212,6 +1248,18 @@ pub struct LeaveGroup<'info> {
     pub spling: Account<'info, Spling>,
     #[account(mut, seeds = [b"user_profile", user.key().as_ref()], has_one = user, bump = user_profile.bump)]
     pub user_profile: Account<'info, UserProfile>,
+    #[account(mut)]
+    pub b: Account<'info, B>,
+    #[account(mut)]
+    /// CHECK: receiving account, not dangerous
+    pub receiver: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account()]
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
@@ -1234,6 +1282,18 @@ pub struct FollowUser<'info> {
         realloc::zero = false,
     )]
     pub user_profile: Account<'info, UserProfile>,
+    #[account(mut)]
+    pub b: Account<'info, B>,
+    #[account(mut)]
+    /// CHECK: receiving account, not dangerous
+    pub receiver: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account()]
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
@@ -1247,6 +1307,18 @@ pub struct UnfollowUser<'info> {
     pub spling: Account<'info, Spling>,
     #[account(mut, seeds = [b"user_profile", user.key().as_ref()], has_one = user, bump = user_profile.bump)]
     pub user_profile: Account<'info, UserProfile>,
+    #[account(mut)]
+    pub b: Account<'info, B>,
+    #[account(mut)]
+    /// CHECK: receiving account, not dangerous
+    pub receiver: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account()]
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
