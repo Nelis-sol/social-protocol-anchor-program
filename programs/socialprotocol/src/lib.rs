@@ -1,15 +1,16 @@
 use anchor_lang::prelude::*;
 use std::mem;
-use anchor_lang::solana_program:: system_instruction;
+use anchor_lang::solana_program::system_instruction;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_lang::solana_program::rent::Rent;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
-use solana_program::system_program;
-use solana_program::account_info::AccountInfo;
+use spl_token::solana_program::system_program;
+use spl_token::solana_program::account_info::AccountInfo;
 
 
 declare_id!("D2mvyNuzAKFAsfmwgZpt6hCL45LJQw1Y965z6dnV15hZ");
+
 
 
 #[program]
@@ -27,6 +28,7 @@ pub mod socialprotocol {
         spling.groups = 0;
         spling.posts = 0;
         spling.tags = 0;
+
 
         // Spling is a PDA, so here we store the bump
         spling.bump = *ctx.bumps.get("spling").unwrap();
@@ -47,7 +49,7 @@ pub mod socialprotocol {
     }
 
     // a user can add a profile, of which the content is stored on the Shadow Drive
-    pub fn create_user_profile(ctx: Context<CreateUserProfile>, shdw: Pubkey) -> Result<()> {
+    pub fn create_user_profile(ctx: Context<CreateUserProfile>, shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user: &Signer = &ctx.accounts.user;
@@ -80,29 +82,39 @@ pub mod socialprotocol {
         user_profile.bump = *ctx.bumps.get("user_profile").unwrap();
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
+        match amount {
+            None => {
+                // transfer SOL tokens
+                let subsidy: u64 = 1000000;
+                **spling.to_account_info().try_borrow_mut_lamports()? -= subsidy;
+                **user.try_borrow_mut_lamports()? += subsidy;
             },
-        );
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
 
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
 
         Ok(())
     }
 
     // create a group profile, of which the content is stored on the Shadow Drive
-    pub fn create_group_profile(ctx: Context<CreateGroupProfile>, shdw: Pubkey) -> Result<()> {
+    pub fn create_group_profile(ctx: Context<CreateGroupProfile>, shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let group_profile: &mut Account<GroupProfile> = &mut ctx.accounts.group_profile;
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user: &Signer = &ctx.accounts.user;
@@ -132,6 +144,29 @@ pub mod socialprotocol {
         // public key of group's Shadow Drive storage account is stored here
         group_profile.shdw = shdw;
 
+        match amount {
+            None => (),
+            Some(am) => {
+
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
+
+
         // GroupId is a PDA, so here we store the bump
         group_profile.bump = *ctx.bumps.get("group_profile").unwrap();
 
@@ -139,10 +174,10 @@ pub mod socialprotocol {
     }
 
     // user can join a group
-    pub fn join_group(ctx: Context<JoinGroup>, address: u32) -> Result<()> {
+    pub fn join_group(ctx: Context<JoinGroup>, address: u32, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -156,31 +191,37 @@ pub mod socialprotocol {
 
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
+        match amount {
+            None => (),
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
         Ok(())
 
     }
 
     // leave group
-    pub fn leave_group(ctx: Context<LeaveGroup>, address: u32) -> Result<()> {
+    pub fn leave_group(ctx: Context<LeaveGroup>, address: u32, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -193,31 +234,37 @@ pub mod socialprotocol {
         user_profile.groups.retain(|x| *x != address);
 
 
+        match amount {
+            None => (),
+            Some(am) => {
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
+
 
         Ok(())
     }
 
     // user can follow another user
-    pub fn follow_user(ctx: Context<FollowUser>, address: u32) -> Result<()> {
+    pub fn follow_user(ctx: Context<FollowUser>, address: u32, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -230,31 +277,37 @@ pub mod socialprotocol {
         user_profile.following.push(address);
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
+        match amount {
+            None => (),
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
 
         Ok(())
     }
 
     // unfollow another user
-    pub fn unfollow_user(ctx: Context<UnfollowUser>, address: u32) -> Result<()> {
+    pub fn unfollow_user(ctx: Context<UnfollowUser>, address: u32, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -267,34 +320,40 @@ pub mod socialprotocol {
         user_profile.following.retain(|x| *x != address);
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
+        match amount {
+            None => (),
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
 
         Ok(())
     }
 
-    pub fn submit_post(ctx: Context<SubmitPost>, group_id: u32, shdw: Pubkey, tag_name: String) -> Result<()> {
+    pub fn submit_post(ctx: Context<SubmitPost>, group_id: u32, shdw: Pubkey, tag_name: String, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let tags: &mut Account<Tags> = &mut ctx.accounts.tags;
         let post: &mut Account<Post> = &mut ctx.accounts.post;
         let likes: &mut Account<Likes> = &mut ctx.accounts.likes;
 
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -332,7 +391,7 @@ pub mod socialprotocol {
             } else {
                 tags.taglist.push(String::from(tag_name_norm));
                 post.tid = &spling.tags + 1;
-                spling.tags += &spling.tags + 1;
+                spling.tags = &spling.tags + 1;
             }
 
         }
@@ -351,21 +410,33 @@ pub mod socialprotocol {
 
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
+        match amount {
+            None => {                
+                // transfer SOL tokens
+                let subsidy: u64 = 2000000;
+                **spling.to_account_info().try_borrow_mut_lamports()? -= subsidy;
+                **user.try_borrow_mut_lamports()? += subsidy;
             },
-        );
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+                
+            }
+        }
 
 
         Ok(())
@@ -373,14 +444,14 @@ pub mod socialprotocol {
 
 
 
-    pub fn submit_temporary_post(ctx: Context<SubmitTemporaryPost>, group_id: u32, shdw: Pubkey, tag_name: String) -> Result<()> {
+    pub fn submit_temporary_post(ctx: Context<SubmitTemporaryPost>, group_id: u32, shdw: Pubkey, tag_name: String, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let tags: &mut Account<Tags> = &mut ctx.accounts.tags;
         let post: &mut Account<Post> = &mut ctx.accounts.post;
         let likes: &mut Account<Likes> = &mut ctx.accounts.likes;
 
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -429,21 +500,27 @@ pub mod socialprotocol {
         post.bump = *ctx.bumps.get("post").unwrap();
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
+        match amount {
+            None => (),
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
 
         Ok(())
@@ -452,11 +529,12 @@ pub mod socialprotocol {
 
 
     // like a post
-    pub fn like_post(ctx: Context<LikePost>) -> Result<()> {
+    pub fn like_post(ctx: Context<LikePost>, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let likes: &mut Account<Likes> = &mut ctx.accounts.likes;
         let b: &mut Account<B> = &mut ctx.accounts.b;
+        let user: &Signer = &ctx.accounts.user;
 
         let receiver = &mut ctx.accounts.receiver;
         let sender_token_account = &mut ctx.accounts.sender_token_account;
@@ -478,33 +556,39 @@ pub mod socialprotocol {
         }
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
+        match amount {
+            None => (),
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
 
         Ok(())
     }
 
 
-    pub fn submit_reply(ctx: Context<SubmitReply>, post_id: u32, shdw: Pubkey) -> Result<()> {
+    pub fn submit_reply(ctx: Context<SubmitReply>, post_id: u32, shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let reply: &mut Account<Reply> = &mut ctx.accounts.reply;
 
-        let _user: &Signer = &ctx.accounts.user;
+        let user: &Signer = &ctx.accounts.user;
         let b: &mut Account<B> = &mut ctx.accounts.b;
 
         let receiver = &mut ctx.accounts.receiver;
@@ -531,21 +615,32 @@ pub mod socialprotocol {
         reply.bump = *ctx.bumps.get("reply").unwrap();
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
+        match amount {
+            None => {                
+                // transfer SOL tokens
+                let subsidy: u64 = 2000000;
+                **spling.to_account_info().try_borrow_mut_lamports()? -= subsidy;
+                **user.try_borrow_mut_lamports()? += subsidy;
             },
-        );
+            Some(am) => {
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
         
 
         Ok(())
@@ -553,10 +648,11 @@ pub mod socialprotocol {
 
 
     // delete a post
-    pub fn delete_post(ctx: Context<DeletePost>, _group_id: u32, _shdw: Pubkey) -> Result<()> {
+    pub fn delete_post(ctx: Context<DeletePost>, _group_id: u32, _shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let _post: &mut Account<Post> = &mut ctx.accounts.post;
         let b: &mut Account<B> = &mut ctx.accounts.b;
+        let user: &Signer = &ctx.accounts.user;
 
         let receiver = &mut ctx.accounts.receiver;
         let sender_token_account = &mut ctx.accounts.sender_token_account;
@@ -564,31 +660,39 @@ pub mod socialprotocol {
         let mint = &ctx.accounts.mint;
         let token_program = &ctx.accounts.token_program;
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+        match amount {
+            None => (),
+            Some(am) => {
+
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
 
         Ok(())
     }
 
     // delete a reply
-    pub fn delete_reply(ctx: Context<DeleteReply>, _post_id: u32, _shdw: Pubkey) -> Result<()> {
+    pub fn delete_reply(ctx: Context<DeleteReply>, _post_id: u32, _shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let _reply: &mut Account<Reply> = &mut ctx.accounts.reply;
         let b: &mut Account<B> = &mut ctx.accounts.b;
+        let user: &Signer = &ctx.accounts.user;
 
         let receiver = &mut ctx.accounts.receiver;
         let sender_token_account = &mut ctx.accounts.sender_token_account;
@@ -596,30 +700,39 @@ pub mod socialprotocol {
         let mint = &ctx.accounts.mint;
         let token_program = &ctx.accounts.token_program;
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+        match amount {
+            None => (),
+            Some(am) => {
+
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
+
 
         Ok(())
     }
 
     // delete user profile
-    pub fn delete_user_profile(ctx: Context<DeleteUserProfile>, _user_id: u32, _shdw: Pubkey) -> Result<()> {
+    pub fn delete_user_profile(ctx: Context<DeleteUserProfile>, _user_id: u32, _shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let _user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let b: &mut Account<B> = &mut ctx.accounts.b;
+        let user: &Signer = &ctx.accounts.user;
 
         let receiver = &mut ctx.accounts.receiver;
         let sender_token_account = &mut ctx.accounts.sender_token_account;
@@ -627,30 +740,39 @@ pub mod socialprotocol {
         let mint = &ctx.accounts.mint;
         let token_program = &ctx.accounts.token_program;
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+        match amount {
+            None => (),
+            Some(am) => {
+
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
+
 
         Ok(())
     }
 
     // delete group profile
-    pub fn delete_group_profile(ctx: Context<DeleteGroupProfile>, _shdw: Pubkey) -> Result<()> {
+    pub fn delete_group_profile(ctx: Context<DeleteGroupProfile>, _shdw: Pubkey, amount: Option<u64>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let _group_profile: &mut Account<GroupProfile> = &mut ctx.accounts.group_profile;
         let b: &mut Account<B> = &mut ctx.accounts.b;
+        let user: &Signer = &ctx.accounts.user;
 
         let receiver = &mut ctx.accounts.receiver;
         let sender_token_account = &mut ctx.accounts.sender_token_account;
@@ -658,21 +780,28 @@ pub mod socialprotocol {
         let mint = &ctx.accounts.mint;
         let token_program = &ctx.accounts.token_program;
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-            token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
 
-        token::transfer(cpi_context, amount)?;
-         
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+        match amount {
+            None => (),
+            Some(am) => {
+
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
+
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
         Ok(())
     }
@@ -705,7 +834,7 @@ pub mod socialprotocol {
         Ok(())
     }
 
-    pub fn extract_bank(ctx:Context<ExtractBank>, amount: u64) -> Result<()> {
+    pub fn extract_bank(ctx:Context<ExtractBank>, amount: Option<u64>) -> Result<()> {
         let user: &Signer = &mut ctx.accounts.user;
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let b: &mut Account<B> = &mut ctx.accounts.b;
@@ -723,21 +852,27 @@ pub mod socialprotocol {
         //assert!(pda_ta.eq(&receiver_token_account.key().to_string()));
 
 
-        // transfer Spling tokens
-        let cpi_context = CpiContext::new(
-           token_program.to_account_info(),
-            token::Transfer {
-                from: sender_token_account.clone().to_account_info(),
-                to: receiver_token_account.clone().to_account_info(),
-                authority: user.clone().to_account_info()
-            },
-        );
-        token::transfer(cpi_context, amount)?;
+        match amount {
+            None => (),
+            Some(am) => {
 
+                // transfer Spling tokens
+                let cpi_context = CpiContext::new(
+                    token_program.to_account_info(),
+                    token::Transfer {
+                        from: sender_token_account.clone().to_account_info(),
+                        to: receiver_token_account.clone().to_account_info(),
+                        authority: user.clone().to_account_info()
+                    },
+                );
 
-        // transfer SOL tokens
-        **b.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **receiver.try_borrow_mut_lamports()? += amount;
+                token::transfer(cpi_context, am)?;
+                
+                // transfer SOL tokens
+                **b.to_account_info().try_borrow_mut_lamports()? -= am;
+                **receiver.try_borrow_mut_lamports()? += am;
+            }
+        }
 
         Ok(())
     }
@@ -1016,11 +1151,7 @@ pub struct ResetBank<'info> {
     pub user: Signer<'info>,
     #[account(mut, seeds = [b"spling"], bump = spling.bump)]
     pub spling: Account<'info, Spling>,
-    #[account(mut, seeds = [b"bank".as_ref()],         
-        realloc = 9900,
-        realloc::payer = user,
-        realloc::zero = false,
-        bump = bank.bump)]
+    #[account(mut, seeds = [b"bank".as_ref()], bump = bank.bump)]
     pub bank: Account<'info, Bank>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
@@ -1218,11 +1349,7 @@ pub struct JoinGroup<'info> {
         mut, 
         seeds = [b"user_profile", user.key().as_ref()],
         bump = user_profile.bump,
-        has_one = user,
-        realloc = 8 + std::mem::size_of::<UserProfile>() + 4,
-        realloc::payer = user,
-        realloc::zero = false,
-    )]
+        has_one = user)]
     pub user_profile: Account<'info, UserProfile>,
     #[account(mut)]
     pub b: Account<'info, B>,
@@ -1276,10 +1403,7 @@ pub struct FollowUser<'info> {
         mut, 
         seeds = [b"user_profile", user.key().as_ref()],
         bump = user_profile.bump,
-        has_one = user,
-        realloc = 8 + std::mem::size_of::<UserProfile>() + 4,
-        realloc::payer = user,
-        realloc::zero = false,
+        has_one = user
     )]
     pub user_profile: Account<'info, UserProfile>,
     #[account(mut)]
