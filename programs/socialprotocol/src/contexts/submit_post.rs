@@ -26,16 +26,6 @@ pub struct SubmitPost<'info> {
     pub likes: Account<'info, Likes>,
     #[account(mut)]
     pub b: Account<'info, B>,
-    #[account(mut)]
-    /// CHECK: receiving account, not dangerous
-    pub receiver: AccountInfo<'info>,
-    #[account(mut)]
-    pub sender_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub receiver_token_account: Box<Account<'info, TokenAccount>>,
-    #[account()]
-    pub mint: Account<'info, Mint>,
-    pub token_program: Program<'info, Token>,
     #[account(mut,address = Thread::pubkey(post.key(),"post_thread".to_string()))]
     pub post_thread: SystemAccount<'info>,
     #[account(address = ThreadProgram::id())]
@@ -59,11 +49,6 @@ impl<'info> SubmitPost<'_> {
             user_profile,
             user,
             b,
-            receiver,
-            sender_token_account,
-            receiver_token_account,
-            mint,
-            token_program,
             post,
             likes,
             tags,
@@ -120,31 +105,6 @@ impl<'info> SubmitPost<'_> {
         // Post is a PDA, so here we store the bump
         post.bump = post_bump;
 
-        match amount {
-            None => {
-                // transfer SOL tokens
-                let subsidy: u64 = 2000000;
-                **spling.to_account_info().try_borrow_mut_lamports()? -= subsidy;
-                **user.try_borrow_mut_lamports()? += subsidy;
-            }
-            Some(am) => {
-                // transfer Spling tokens
-                let cpi_context = CpiContext::new(
-                    token_program.to_account_info(),
-                    token::Transfer {
-                        from: sender_token_account.clone().to_account_info(),
-                        to: receiver_token_account.clone().to_account_info(),
-                        authority: user.clone().to_account_info(),
-                    },
-                );
-
-                token::transfer(cpi_context, am)?;
-
-                // transfer SOL tokens
-                **b.to_account_info().try_borrow_mut_lamports()? -= am;
-                **receiver.try_borrow_mut_lamports()? += am;
-            }
-        }
 
         // close post after some time
         let clockwork_delete_post_ix = Instruction {
