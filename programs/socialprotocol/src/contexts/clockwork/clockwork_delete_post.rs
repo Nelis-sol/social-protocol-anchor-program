@@ -18,25 +18,6 @@ pub struct ClockworkDeletePost<'info> {
 
 impl<'info> ClockworkDeletePost<'_> {
     pub fn process(&mut self) -> Result<()> {
-        let Self {
-            thread_program,
-            post_thread,
-            post,
-            shdw,
-            spling,
-            ..
-        } = self;
-
-        clockwork_sdk::cpi::thread_delete(CpiContext::new_with_signer(
-            thread_program.to_account_info(),
-            clockwork_sdk::cpi::ThreadDelete {
-                authority: post.to_account_info(),
-                thread: post_thread.to_account_info(),
-                close_to: spling.to_account_info(),
-            },
-            &[&[b"post", &shdw.key().as_ref(), &[post.bump]]],
-        ))?;
-
         Ok(())
     }
 }

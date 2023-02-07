@@ -5,7 +5,7 @@ use spl_token::solana_program::account_info::AccountInfo;
 use spl_token::solana_program::system_program;
 use std::mem;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("BfZEDfZLyTkNgdotvwokkayzHxCYJZQqFQM8BMc9kSza");
 
 pub mod contexts;
 pub mod states;

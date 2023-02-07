@@ -105,15 +105,16 @@ impl<'info> SubmitPost<'_> {
         // Post is a PDA, so here we store the bump
         post.bump = post_bump;
 
-
         // close post after some time
         let clockwork_delete_post_ix = Instruction {
             program_id: crate::ID,
             accounts: vec![
                 AccountMeta::new_readonly(shdw, false),
-                AccountMeta::new(user.key(), false),
+                AccountMeta::new(spling.key(), false),
                 AccountMeta::new(post.key(), false),
                 AccountMeta::new(post_thread.key(), true),
+                AccountMeta::new_readonly(thread_program.key(), false),
+                AccountMeta::new_readonly(system_program.key(), false),
             ],
             data: clockwork_sdk::utils::anchor_sighash("clockwork_delete_post").into(),
         };
@@ -123,7 +124,7 @@ impl<'info> SubmitPost<'_> {
             CpiContext::new_with_signer(
                 thread_program.to_account_info(),
                 clockwork_sdk::cpi::ThreadCreate {
-                    authority: post_thread.to_account_info(),
+                    authority: post.to_account_info(),
                     payer: user.to_account_info(),
                     system_program: system_program.to_account_info(),
                     thread: post_thread.to_account_info(),
@@ -133,7 +134,7 @@ impl<'info> SubmitPost<'_> {
             "post_thread".to_string(),
             clockwork_delete_post_ix.into(),
             Trigger::Cron {
-                schedule: "*/10 * * * * * *".to_string(),
+                schedule: "*/55 * * * * * *".to_string(),
                 skippable: false,
             },
         )?;
