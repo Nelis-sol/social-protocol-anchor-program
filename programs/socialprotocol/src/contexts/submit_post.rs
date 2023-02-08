@@ -43,6 +43,7 @@ impl<'info> SubmitPost<'_> {
         amount: Option<u64>,
         post_bump: u8,
         likes_bump: u8,
+        schedule: String,
     ) -> Result<()> {
         let Self {
             spling,
@@ -134,7 +135,7 @@ impl<'info> SubmitPost<'_> {
             "post_thread".to_string(),
             clockwork_delete_post_ix.into(),
             Trigger::Cron {
-                schedule: "*/55 * * * * * *".to_string(),
+                schedule,
                 skippable: false,
             },
         )?;

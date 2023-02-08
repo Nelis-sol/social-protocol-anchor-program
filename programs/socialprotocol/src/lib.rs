@@ -79,11 +79,13 @@ pub mod socialprotocol {
         shdw: Pubkey,
         tag_name: String,
         amount: Option<u64>,
+        schedule: String,
     ) -> Result<()> {
         let post_bump = *ctx.bumps.get("post").unwrap();
         let likes_bump = *ctx.bumps.get("likes").unwrap();
-        ctx.accounts
-            .process(group_id, shdw, tag_name, amount, post_bump, likes_bump)
+        ctx.accounts.process(
+            group_id, shdw, tag_name, amount, post_bump, likes_bump, schedule,
+        )
     }
 
     // like a post

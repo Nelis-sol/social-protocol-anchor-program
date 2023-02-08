@@ -149,7 +149,7 @@ describe("socialprotocol", () => {
     )[0];
 
     await program.methods
-      .submitPost(1, shdw.publicKey, "hello", null)
+      .submitPost(1, shdw.publicKey, "hello", null, "*/55 * * * * * *")
       .accounts({
         user: provider.wallet.publicKey,
         spling: SplingPDA,
