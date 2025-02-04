@@ -16,7 +16,7 @@ With Spling social protocol, developers could build their own social app on top 
   * Like a post (or reply)
 
 Two special features:
-  * Actions are free for a user, they are paid by the internal program bank account
+  * Actions are free for a user, they are paid by the internal program bank account (no SOL required)
   * Content is compressed; a hash is taking from the content (e.g. user post) and used to generate the PDA address that stored metadata onchain
 
 <br />
